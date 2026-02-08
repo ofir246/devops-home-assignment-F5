@@ -12,9 +12,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and run tests with Docker Compose
+      - name: Run Docker Compose tests
+        id: compose_tests
         run: |
+          set -e
           docker compose up --build --abort-on-container-exit --exit-code-from tests
+
+      # If we reached here, tests passed
+      - name: Mark success
+        if: ${{ success() }}
+        run: |
+          mkdir -p ci_result
+          touch ci_result/succeeded
+
+      # If tests failed, create fail marker 
+      - name: Mark failure
+        if: ${{ failure() }}
+        run: |
+          mkdir -p ci_result
+          touch ci_result/fail
+
+      # Upload artifact in both cases
+      - name: Upload result artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: result
+          path: ci_result
